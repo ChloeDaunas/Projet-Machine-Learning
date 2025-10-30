@@ -1,0 +1,29 @@
+Liste des event
+
+N E1	Accepted password for <...> from <...> port <...> ssh2
+N E2	Connection closed by <...> [preauth]
+S E3	Did not receive identification string from <...>
+S E4	Disconnecting: Too many authentication failures for <...>
+S E5	Disconnecting: Too many authentication failures for invalid user <...>
+S E6	error: Received disconnect from <...>: <...>: command terminated
+S E7	error: Received disconnect from <...>: <...>: No more authentication methods available
+S E8	Failed none for invalid user <...> from <...> port <...> ssh2
+S E9	Failed password for <...> from <...> port <...> ssh2
+S E10	Failed password for invalid user <...> from <...> port <...> ssh2
+S E11	fatal: Write failed: Connection reset by peer <...>
+S E12	input_userauth_request: invalid user <...> [preauth]
+S E13	Invalid user <...> from <...>
+S E14	message repeated <...> times: [ Failed password for <...> ]
+S E15	PAM <...> more authentication failure; logname= <...>
+S E16	PAM <...> more authentication failures; logname= <...>
+S E17	PAM <...> more authentication failures; logname= <...>
+S E18	PAM service(sshd) ignoring max retries; <...> > <...>
+S E19	pam_unix(sshd:auth): authentication failure; logname= <...>
+S E20	pam_unix(sshd:auth): authentication failure; logname= <...>
+S E21	pam_unix(sshd:auth): check pass; user unknown
+N E22	pam_unix(sshd:session): session closed for user <...>
+N E23	pam_unix(sshd:session): session opened for user <...>
+N E24	Received disconnect from <...>: <...>: Bye Bye [preauth]
+N E25	Received disconnect from <...>: <...>: Closed due to user request
+N E26	Received disconnect from <...>: <...>: disconnected by user
+S E27	reverse mapping checking getaddrinfo for <...> [<...>] failed - POSSIBLE BREAK-IN ATTEMPT!
