@@ -1,0 +1,106 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{lipsum}
+\usepackage{setspace}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{float}
+
+\title{Machine Learning Report}
+\author{
+  Leïna Ben Bella \\
+  Cholé Daunas \\
+}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+This report presents the methodology, preprocessing steps, models, evaluations, and results obtained during the analysis of connection log data. The goal of the project is to classify network events into different categories, including binary classification of connection types (Normal vs Suspect) and multiclass prediction of failure types.
+
+\section{Data Preprocessing}
+
+The preprocessing phase aimed to transform the raw log data into a structured and clean dataset suitable for analysis and modeling. Initially, the Time column, when present, was converted to a datetime format, allowing the extraction of the hour of each event into a new column, Hour. This temporal feature enables the computation of metrics such as the number of connections per IP per hour. In cases where the Time column was missing, a default value of -1 was assigned to the Hour column to avoid missing values.\vspace{1em}
+
+Next, several features were extracted directly from the text content of each log entry. IP addresses were identified using a regular expression and stored in a dedicated column, with missing values replaced by "0.0.0.0". Usernames were similarly extracted by detecting the word following \texttt{user}, with unknown entries replaced by "unknown". Port numbers were captured from the text, converted to numeric values, and missing entries replaced by 0. Additionally, a boolean feature was created to indicate whether an event involved pre-authentication, based on the presence of the \texttt{[preauth]} tag.\vspace{1em}
+
+Event classification was then performed to reduce the complexity of the data. Using the EventId column, events were labeled as either normal “N” or suspect “S” (cf documentation with information about each event). This approach reduced the number of categories from 26 to just 2, simplifying subsequent analysis and machine learning tasks.\vspace{1em}
+
+Finally, unnecessary columns were removed from the dataset. While the original EventId was discarded after classification, the Content column was retained for reference despite being decomposed into more meaningful features. The final dataset thus included \texttt{ip}, \texttt{user}, \texttt{port}, \texttt{preauth}, \texttt{Hour}, \texttt{conn\_per\_hour}, \texttt{connection\_type}, and \texttt{Content}.\vspace{1em}
+
+Overall, this preprocessing pipeline effectively converted raw, unstructured log data into a clean, structured, and enriched dataset that supports both descriptive analysis and predictive modeling.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Failed_SSH.png}
+    \caption{Failed SSH}
+\end{figure}
+
+\section{Baseline Models}
+
+Baseline models were trained to evaluate the predictive power of the engineered features. For binary connection-type prediction (Normal vs. Suspect), a Logistic Regression classifier was used within a preprocessing pipeline: numerical features (\texttt{port}, \texttt{Hour}, \texttt{conn\_per\_hour}) were passed through, boolean features (\texttt{preauth}) were kept, and categorical features (\texttt{ip}, \texttt{user}) were one-hot encoded. The initial model achieved near-perfect accuracy, revealing that \texttt{ip} strongly correlated with the target. Removing both \texttt{ip} and \texttt{user} produced a more realistic performance of 96.5\% accuracy, with high precision and recall for both classes.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.45\textwidth]{Confusion_matrix_with_user_and_ip.png}
+    \includegraphics[width=0.45\textwidth]{confusion_matrix_without_user_and_ip.png}
+    \caption{Confusion matrix with user and ip and Confusion matrix without user and ip}
+\end{figure}
+
+\vspace{1.3em}
+For predicting failure types, a new variable \texttt{FailureType} was extracted from the log content. A Linear SVM was trained on scaled numerical features, boolean features, and one-hot encoded categorical features. Including \texttt{user} initially led to overly optimistic results, so it was removed. The final model achieved 89\% accuracy, performing well on frequent failure types while reflecting lower recall on rarer classes.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.45\textwidth]{Confusion_matrix_with_user.png}
+    \includegraphics[width=0.45\textwidth]{Confusion_matrix_without_user.png}
+    \caption{Confusion matrix with user and Confusion matrix without user}
+\end{figure}
+
+These baseline models demonstrated the predictive value of the engineered features and highlighted potential pitfalls such as feature leakage, providing a reference point for further optimization with hyperparameter tuning and ensemble methods.
+
+\section{Grid Search Optimization}
+
+GridSearchCV was applied to both the \texttt{FailureType} and connection-type models to identify the best hyperparameters using cross-validation.
+
+\vspace{1.3em}
+For the FailureType model (Linear SVM), the best parameters were \texttt{C=1} and \texttt{max\_iter=500}. The optimization did not improve performance, with overall accuracy remaining at 89\%. This is likely due to the small, imbalanced dataset and limited lexical variability. Most classes were already well learned, except ``Invalid user'', which remains difficult to predict without the \texttt{user} feature.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{Confusion_matrix_BEFORE_GridSearch.png}
+    \includegraphics[width=0.45\textwidth]{Confusion_matrix_AFTER_GridSearch.png}
+    \caption{Confusion matrix BEFORE GridSearchand Confusion matrix AFTER GridSearch}
+\end{figure}
+
+For the connection-type model (Logistic Regression), the best parameters were \texttt{C=0.1} with \texttt{l2} penalty. After optimization, recall for the suspect class reached 1.0, eliminating false negatives, but precision for the normal class dropped slightly, increasing false positives. Overall, total errors rose from 14 to 17. The optimized model became more sensitive to suspect connections but less precise for normal ones, illustrating a trade-off between class sensitivities.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{Confusion_matrix_BEFORE_GridSearch_2.png}
+    \includegraphics[width=0.45\textwidth]{Confusion_matrix_AFTER_GridSearch_2.png}
+    \caption{Confusion matrix BEFORE GridSearchand and Confusion matrix AFTER GridSearch}
+\end{figure}
+These results show that hyperparameter tuning can adjust class sensitivity but cannot overcome the inherent limitations of the dataset, emphasizing the importance of both data quality and model selection.
+
+
+
+\section{Ensemble Modeling with Voting and Bagging}
+
+To improve \texttt{connection\_type} prediction, a Voting Classifier combining a Logistic Regression and a Linear SVM was used, with each base model wrapped in a BaggingClassifier. Bagging reduces variance by training multiple estimators on random subsets of the data, while Voting aggregates predictions from the different models.
+
+The ensemble achieved the same results as the baseline Logistic Regression, with 96.5\% accuracy and similar precision and recall for both classes. This is expected because the dataset is relatively small and simple, and the features are already highly discriminative, making it difficult to improve performance. Furthermore, Logistic Regression is already a stable classifier, so applying Bagging does not significantly increase accuracy—it mainly helps reduce variance and improve robustness.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.45\textwidth]{Confusion_matrix_TypeConnexion.png}
+    \includegraphics[width=0.45\textwidth]{Confusion_matrix_Voting_Classifier.png}
+    \caption{Confusion matrix TypeConnexion and Confusion matrix Voting Classifier}
+\end{figure}
+\section{Conclusion}
+
+The project successfully built, optimized, and evaluated multiple machine learning models for network event classification. Further improvements could be achieved using weighted losses, anomaly detection models, or deep learning architectures.
+
+\end{document}
